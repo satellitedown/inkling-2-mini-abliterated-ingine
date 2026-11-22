@@ -110,6 +110,19 @@ INGINE_CTX=131072
 `INGINE_MODEL_DIR` must hold the pinned revision; this checks it without downloading:
 `.tools/venv/bin/python scripts/download_model.py --model-dir "$INGINE_MODEL_DIR" --verify-only`.
 
+To keep the loop attention in BF16 while quantizing the outer attention and output head,
+add these flags to the launcher configuration:
+
+```bash
+INGINE_EXTRA_ARGS="--outer-attention-fp8 --fp8-head"
+```
+
+The launcher replaces the profile's `--dense-fp8` when it sees `--outer-attention-fp8`.
+For direct `ingine-serve` calls, use either attention flag. `--dense-fp8` still converts
+all attention projections and the output head. With `--outer-attention-fp8`, layers
+0–5 and 18–23 use E4M3 row-scaled weights and layers 6–17 keep their BF16 attention.
+`--fp8-head` can also be used by itself on the direct server.
+
 ## Connect an application
 
 Use the OpenAI-compatible API at **`http://127.0.0.1:8003/v1`**, model **`inkling-2-mini-abliterated`**

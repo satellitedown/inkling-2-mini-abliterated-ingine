@@ -331,16 +331,24 @@ Layer load_layer_into(Loader& ld, int l, ExpertFormat fmt, bool dense_fp8) {
 
 }  // namespace
 
-Weights load_weights(const fs::path& model_dir, bool dense_fp8, cudaStream_t stream) {
+Weights load_weights(const fs::path& model_dir, bool dense_fp8, cudaStream_t stream, bool outer_attention_fp8,
+                     bool head_fp8) {
+  if (dense_fp8 && outer_attention_fp8) {
+    throw std::invalid_argument("Choose either dense FP8 or outer-attention FP8");
+  }
+  const bool quantize_head = dense_fp8 || head_fp8;
   const SafetensorsModel m(model_dir);
   DeviceUploader up;
   Weights w;
-  w.dense_fp8 = dense_fp8;
+  w.dense_fp8 = dense_fp8 || outer_attention_fp8;
   w.expert_formats = expert_formats(model_dir);
   w.storage.reserve(4096);
   Loader ld(m, up, stream, w.storage);
   const int H = HIDDEN;
-  for (int l = 0; l < LAYERS; ++l) w.layers.push_back(load_layer_into(ld, l, w.expert_formats[l], dense_fp8));
+  for (int l = 0; l < LAYERS; ++l) {
+    const bool quantize_attention = dense_fp8 || (outer_attention_fp8 && !is_loop_layer(l));
+    w.layers.push_back(load_layer_into(ld, l, w.expert_formats[l], quantize_attention));
+  }
 
   // message_queries [12, 4, H] = cat([queries[:, :1], kv_queries, queries[:, 1:]], dim=1) with queries and
   // kv_queries [24, H] unflattened to [12, 2, H]
@@ -366,11 +374,11 @@ Weights load_weights(const fs::path& model_dir, bool dense_fp8, cudaStream_t str
     const std::string name = "model.llm.unembed.weight";
     if (m.at(name)->dtype != "BF16") throw std::runtime_error("weights: unembed must be BF16");
     const std::size_t bytes = std::size_t(UNPADDED_VOCAB) * H * 2;
-    void* d = dense_fp8 ? (unembed_tmp = DeviceBuffer(bytes)).p : ld.alloc(bytes);
+    void* d = quantize_head ? (unembed_tmp = DeviceBuffer(bytes)).p : ld.alloc(bytes);
     ld.queue(name, d, UNPADDED_VOCAB);  // unembed[:UNPADDED_VOCAB]
     ld.flush();
     const Tensor bf = rm(d, DType::BF16, {UNPADDED_VOCAB, H});
-    if (dense_fp8) {
+    if (quantize_head) {
       w.unembed = to_fp8(ld, bf, UNPADDED_VOCAB, H);
       CUDA_CHECK(cudaStreamSynchronize(stream));
     } else {

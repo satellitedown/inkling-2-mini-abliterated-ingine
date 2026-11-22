@@ -198,10 +198,10 @@ struct Weights {
   Tensor embed_norm;          // fp32 [H]
   Tensor final_query;         // fp32 [1, H]
   Tensor final_norm;          // fp32 [H] (also final_norm1 = [1, H] view of the same memory)
-  Dense unembed;              // [UNPADDED_VOCAB, H] bf16, or FP8 rows + scales (dense_fp8)
+  Dense unembed;              // [UNPADDED_VOCAB, H] BF16 or FP8 rows + scales
   Tensor message_queries;     // fp32 [12, 4, H]: q, k, v, mlp per loop layer
   std::array<ExpertFormat, LAYERS> expert_formats{};
-  bool dense_fp8 = false;     // wproj (+ views), wo and unembed are FP8 rows
+  bool dense_fp8 = false;     // at least one layer has FP8 attention weights
 
   std::vector<DeviceBuffer> storage;  // device allocations behind the views
 };

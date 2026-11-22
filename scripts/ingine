@@ -169,11 +169,17 @@ or set INGINE_ABLATION= (empty) to serve the original model."
 # ---- commands -------------------------------------------------------------------------------------
 cmd_serve() {
   check_install
-  local args=(--engine --model-dir "$INGINE_MODEL_DIR" --host "$HOST" --port "$PORT" --max-ctx "$INGINE_CTX"
-              "${profile_flags[@]}")
-  if [[ -n "$INGINE_ABLATION" ]]; then args+=(--ablation "$INGINE_ABLATION" --model-id "$profile_model_id"); fi
-  local extra=()
+  local args=(--engine --model-dir "$INGINE_MODEL_DIR" --host "$HOST" --port "$PORT" --max-ctx "$INGINE_CTX")
+  local extra=() flag outer_attention=0
   read -r -a extra <<< "$INGINE_EXTRA_ARGS"
+  for flag in "${extra[@]}" "$@"; do
+    if [[ "$flag" == --outer-attention-fp8 ]]; then outer_attention=1; fi
+  done
+  for flag in "${profile_flags[@]}"; do
+    if (( outer_attention )) && [[ "$flag" == --dense-fp8 ]]; then continue; fi
+    args+=("$flag")
+  done
+  if [[ -n "$INGINE_ABLATION" ]]; then args+=(--ablation "$INGINE_ABLATION" --model-id "$profile_model_id"); fi
   cd "$ROOT"
   exec "$SERVER" "${args[@]}" "${extra[@]}" "$@"
 }

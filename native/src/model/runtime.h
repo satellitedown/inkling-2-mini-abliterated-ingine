@@ -37,7 +37,8 @@ namespace ingine::model {
 
 // ---- loading (weights.load + FastDecoder._concat_projections/_stack_layer_params/_fp8_dense,
 // model.Ablation.load/none, model.State)
-Weights load_weights(const std::filesystem::path& model_dir, bool dense_fp8, cudaStream_t stream);
+Weights load_weights(const std::filesystem::path& model_dir, bool dense_fp8, cudaStream_t stream,
+                     bool outer_attention_fp8 = false, bool head_fp8 = false);
 // One layer as weights.load_layer (+ the decoder's derived tensors), for kernel tests; owns its memory.
 Layer load_layer(const std::filesystem::path& model_dir, int l, bool dense_fp8, cudaStream_t stream,
                  std::vector<DeviceBuffer>& storage);
@@ -95,7 +96,7 @@ class GraphExec {
 // ---- Runtime
 class Runtime {
  public:
-  // Loads the weights (options.model_dir, dense_fp8) and ablation (options.ablation).
+  // Loads the weights (options.model_dir and precision flags) and ablation (options.ablation).
   explicit Runtime(const RuntimeOptions& options);
   // Uses the given weights and ablation (tests, tools); options.model_dir and ablation are not read.
   Runtime(const RuntimeOptions& options, Weights weights, Ablation ablation);
