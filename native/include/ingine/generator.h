@@ -63,6 +63,8 @@ struct RuntimeOptions {
   // than 2048 for 0.38 GB more scratch; results differ between chunk sizes only by rounding.
   int prefill_chunk = 3072;
   bool dense_fp8 = true, kv_fp8 = false, spec = false;
+  bool outer_attention_fp8 = false;  // FP8 attention only outside layers 6–17
+  bool head_fp8 = false;             // FP8 vocabulary head independent of attention mode
   float spec_threshold = 0.8f;
   // Conversation parking: device memory (MiB) for the checkpoints of conversations displaced by another
   // one, least recently used evicted, all released when a device allocation fails; 0 disables; negative:

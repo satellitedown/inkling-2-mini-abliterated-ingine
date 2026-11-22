@@ -49,7 +49,7 @@ class Drafter {
   static constexpr int CONTEXT_ROWS = 16384;           // context tokens added to it (until reset())
 
   // Loads mtp.safetensors from model_dir; `w` supplies the embedding, its norm and the unembedding (the
-  // base logits use w.unembed as stored: FP8 rows with dense_fp8). `w` must outlive the drafter.
+  // base logits use w.unembed as stored (BF16 or FP8 rows). `w` must outlive the drafter.
   // shortlist_rows: ranked rows of the shortlist head (tests use fewer to leave tokens of a small vocabulary out).
   Drafter(const std::filesystem::path& model_dir, const Weights& w, int max_ctx, cudaStream_t stream,
           int shortlist_rows = SHORTLIST_ROWS);
